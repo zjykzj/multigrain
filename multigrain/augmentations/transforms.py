@@ -72,6 +72,14 @@ class Bound(object):
 
 
 def get_transforms(Dataset=IN1K, input_size=224, kind='full', crop=True, need=('train', 'val'), backbone=None):
+    """
+    @param Dataset: 数据集类型
+    @param input_size: 输入大小
+    @param kind: 预处理列表类型
+    @param crop: 是否进行中央裁剪
+    @param need: 针对不同阶段(训练或者验证阶段)进行的数据处理
+    @param backbone: 针对指定的主干网络使用不同的均值/方差
+    """
     mean, std = Dataset.MEAN, Dataset.STD
     if backbone is not None and backbone in ['pnasnet5large', 'nasnetamobile']:
         mean, std = [0.5, 0.5, 0.5], [0.5, 0.5, 0.5]
