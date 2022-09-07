@@ -14,6 +14,7 @@ class MultiCriterion(nn.Module):
     - losses_dict: should be a dict with name as key and (loss, input_keys, weight) as values.
     - skip_zero: skip the computation of losses with 0 weight
     """
+
     def __init__(self, losses_dict, skip_zeros=False):
         super().__init__()
         self.losses = OD()
@@ -40,4 +41,3 @@ class MultiCriterion(nn.Module):
             loss = loss + self.weights[name] * this_loss
         return_dict['loss'] = loss
         return return_dict
-

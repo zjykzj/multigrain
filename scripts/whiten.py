@@ -19,6 +19,8 @@ from multigrain.lib.whiten import get_whiten
 from argparse import ArgumentParser, ArgumentDefaultsHelpFormatter
 import yaml
 import os.path as osp
+
+# 计时
 tic, toc = utils.Tictoc()
 
 
@@ -37,12 +39,18 @@ def run(args):
 
     collate_fn = dict(collate_fn=list_collate) if args.input_crop == 'rect' else {}
 
-    transforms = get_transforms(input_size=args.input_size, crop=(args.input_crop == 'square'), need=('val',), backbone=args.backbone)
+    # 加载验证集预处理器
+    transforms = get_transforms(input_size=args.input_size, crop=(args.input_crop == 'square'), need=('val',),
+                                backbone=args.backbone)
+    # 给定白化文件路径以及白化数据根路径, 创建数据类
     dataset = ListDataset(args.whiten_path, args.whiten_list, transforms['val'])
+    # 如果指定了参与白化训练的图像数据, 则创建子数据集
     if args.num_whiten_images != -1:
         dataset = Subset(dataset, list(range(args.num_whiten_images)))
+    # 创建数据加载器
     loader = DataLoader(dataset, batch_size=args.batch_size, num_workers=args.workers, pin_memory=True, **collate_fn)
 
+    # 创建MultiGrain模型
     model = get_multigrain(args.backbone, include_sampling=False, pretrained_backbone=args.pretrained_backbone)
 
     if args.cuda:
@@ -50,6 +58,7 @@ def run(args):
 
     p = model.pool.p
 
+    # 加载预训练权重
     checkpoints = utils.CheckpointHandler(args.expdir)
 
     if checkpoints.exists(args.resume_epoch, args.resume_from):
@@ -58,16 +67,20 @@ def run(args):
     else:
         raise ValueError('Checkpoint ' + args.resume_from + ' not found')
 
+    # 是否使用指定的池化因子p
     if args.pooling_exponent is not None:  # overwrite stored pooling exponent
         p.data.fill_(args.pooling_exponent)
 
     print("Multigrain model with {} backbone and p={} pooling:".format(args.backbone, p.item()))
     print(model)
 
+    # 初始化模型白化设置
     model.init_whitening()
+    # 设置模型评估模式
     model.eval()
 
     print("Computing embeddings...")
+    # 计算嵌入特征
     embeddings = []
     for i, batch in enumerate(loader):
         if i % (len(loader) / 100) < 1:
@@ -76,11 +89,13 @@ def run(args):
             if args.cuda:
                 batch = utils.cuda(batch)
             embeddings.append(model(batch)['embedding'].cpu())
+    #
     embeddings = torch.cat(embeddings)
     if args.no_include_last:
         embeddings = embeddings[:, :-1]
 
     print("Computing whitening...")
+    # 计算白化参数
     m, P = get_whiten(embeddings)
 
     if args.no_include_last:
@@ -90,6 +105,7 @@ def run(args):
         P = torch.cat((P, torch.zeros(1, D)), 0)
         P = torch.cat((P, torch.cat((torch.zeros(D, 1), torch.tensor([1.0])), 1)), 1)
 
+    # 集成白化参数
     model.integrate_whitening(m, P)
 
     if not args.dry:
@@ -98,8 +114,9 @@ def run(args):
 
 if __name__ == "__main__":
     parser = ArgumentParser(description="Whitening computation for MultiGrain model, computes the whitening matrix",
-                                         formatter_class=ArgumentDefaultsHelpFormatter)
-    parser.add_argument('--expdir', default='experiments/resnet50/finetune500_whitened', help='destination directory for checkpoint')
+                            formatter_class=ArgumentDefaultsHelpFormatter)
+    parser.add_argument('--expdir', default='experiments/resnet50/finetune500_whitened',
+                        help='destination directory for checkpoint')
     parser.add_argument('--resume-epoch', default=-1, type=int, help='resume epoch (-1: last, 0: from scratch)')
     parser.add_argument('--resume-from', default=None, help='source experiment to whiten')
     parser.add_argument('--input-size', default=500, type=int, help='images input size')
@@ -110,10 +127,17 @@ if __name__ == "__main__":
     parser.add_argument('--pooling-exponent', default=None, type=float,
                         help='pooling exponent in GeM pooling (default: use value from checkpoint)')
     parser.add_argument('--no-cuda', action='store_true', help='do not use CUDA')
-    parser.add_argument('--no-include-last', action='store_true', help='remove last channel from PCA (useful to not include "bias multiplier" channel)')
+    #
+    parser.add_argument('--no-include-last', action='store_true',
+                        help='remove last channel from PCA (useful to not include "bias multiplier" channel)')
+    # 白化图片列表文件
     parser.add_argument('--whiten-list', default='data/whiten.txt', help='list of images to compute whitening')
+    # 白化数据根路径
     parser.add_argument('--whiten-path', default='data/whiten', help='whitening data root')
-    parser.add_argument('--num-whiten-images', default=-1, type=int, help='number of images used in whitening. (-1 -> all in list)')
+    # 参与白化训练的数据, 默认为-1(使用全部数据)
+    parser.add_argument('--num-whiten-images', default=-1, type=int,
+                        help='number of images used in whitening. (-1 -> all in list)')
+    # 数据加载器线程数
     parser.add_argument('--workers', default=20, type=int, help='number of data-fetching workers')
     parser.add_argument('--dry', action='store_true', help='do not store anything')
 

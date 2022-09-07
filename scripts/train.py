@@ -23,8 +23,8 @@ import yaml
 import os.path as osp
 from collections import defaultdict
 from collections import OrderedDict as OD
-tic, toc = utils.Tictoc()
 
+tic, toc = utils.Tictoc()
 
 def run(args):
     argstr = yaml.dump(args.__dict__, default_flow_style=False)
