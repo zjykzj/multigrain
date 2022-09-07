@@ -24,7 +24,9 @@ import os.path as osp
 from collections import defaultdict
 from collections import OrderedDict as OD
 
+# 计时
 tic, toc = utils.Tictoc()
+
 
 def run(args):
     argstr = yaml.dump(args.__dict__, default_flow_style=False)
@@ -48,13 +50,15 @@ def run(args):
     transforms = get_transforms(IN1K, args.input_size, args.augmentation, args.backbone)
     datas = {}
     for split in ('train', 'val'):
-        imload = preloader(args.imagenet_path, args.preload_dir_imagenet) if args.preload_dir_imagenet else default_loader
+        imload = preloader(args.imagenet_path,
+                           args.preload_dir_imagenet) if args.preload_dir_imagenet else default_loader
         datas[split] = IdDataset(IN1K(args.imagenet_path, split, transform=transforms[split], loader=imload))
     loaders = {}
     loaders['train'] = DataLoader(datas['train'],
-                       batch_sampler=RASampler(len(datas['train']), args.batch_size, args.repeated_augmentations,
-                                               args.epoch_len_factor, shuffle=True, drop_last=False),
-                       num_workers=args.workers, pin_memory=True)
+                                  batch_sampler=RASampler(len(datas['train']), args.batch_size,
+                                                          args.repeated_augmentations,
+                                                          args.epoch_len_factor, shuffle=True, drop_last=False),
+                                  num_workers=args.workers, pin_memory=True)
     loaders['val'] = DataLoader(datas['val'], batch_size=args.batch_size, shuffle=args.shuffle_val,
                                 num_workers=args.workers, pin_memory=True)
 
@@ -90,7 +94,8 @@ def run(args):
         model = utils.cuda(model)
 
     optimizers = OD()
-    optimizers['backbone'] = SGD(model.parameters(), lr=args.learning_rate, momentum=args.momentum, weight_decay=args.weight_decay)
+    optimizers['backbone'] = SGD(model.parameters(), lr=args.learning_rate, momentum=args.momentum,
+                                 weight_decay=args.weight_decay)
     optimizers['margin_beta'] = SGD([beta], lr=args.learning_rate * args.beta_lr, momentum=args.momentum)
     optimizers = MultiOptim(optimizers)
     optimizers.set_base_lr()
@@ -115,7 +120,8 @@ def run(args):
         output_dict = model(batch['input'], batch['instance_target'])
         output_dict['classifier_target'] = batch['classifier_target']
         loss_dict = criterion(output_dict)
-        top1, top5 = utils.accuracy(output_dict['classifier_output'].data, output_dict['classifier_target'].data, topk=(1, 5))
+        top1, top5 = utils.accuracy(output_dict['classifier_output'].data, output_dict['classifier_target'].data,
+                                    topk=(1, 5))
 
         loss_dict['loss'].backward()
         batches_accumulated += 1
@@ -155,7 +161,8 @@ def run(args):
     checkpoints = utils.CheckpointHandler(args.expdir, args.save_every)
 
     if checkpoints.exists(args.resume_epoch, args.resume_from):
-        begin_epoch, loaded_extra = checkpoints.resume(model, optimizers, metrics_history, args.resume_epoch, args.resume_from)
+        begin_epoch, loaded_extra = checkpoints.resume(model, optimizers, metrics_history, args.resume_epoch,
+                                                       args.resume_from)
         if 'beta' in loaded_extra:
             beta.data.copy_(loaded_extra['beta'])
         else:
@@ -169,10 +176,12 @@ def run(args):
         for i, batch in enumerate(loader):
             if args.cuda:
                 batch = utils.cuda(batch)
-            data_time = 1000 * toc(); tic()
+            data_time = 1000 * toc();
+            tic()
             step_metrics = step(batch)
             step_metrics['data_time'] = data_time
-            step_metrics['batch_time'] = 1000 * toc(); tic()
+            step_metrics['batch_time'] = 1000 * toc();
+            tic()
             for (k, v) in step_metrics.items():
                 metrics[prefix + k].update(v, len(batch['input']))
             print(logging.str_metrics(metrics, iter=i, num_iters=len(loader), epoch=epoch, num_epochs=args.epochs))
@@ -203,11 +212,17 @@ def run(args):
 
 
 if __name__ == "__main__":
-    parser = ArgumentParser(description="Training script for MultiGrain models", formatter_class=ArgumentDefaultsHelpFormatter)
+    parser = ArgumentParser(description="Training script for MultiGrain models",
+                            formatter_class=ArgumentDefaultsHelpFormatter)
+    # 训练导出路径
     parser.add_argument('--expdir', default='experiments/resnet50', help='experiment directory')
+    # 是否打乱验证数据集, 默认不打乱
     parser.add_argument('--shuffle-val', action='store_true', help='shuffle val. dataset')
+    # 恢复训练开始的轮数
     parser.add_argument('--resume-epoch', default=-1, type=int, help='resume epoch (-1: last, 0: from scratch)')
-    parser.add_argument('--resume-from', default=None, help='resume checkpoint file/folder (default same as experiment)')
+    # 恢复训练加载的
+    parser.add_argument('--resume-from', default=None,
+                        help='resume checkpoint file/folder (default same as experiment)')
     parser.add_argument('--learning-rate', default=0.2, type=float, help='base learning rate')
     parser.add_argument('--weight-decay', default=1e-4, type=float, help='weight decay')
     parser.add_argument('--momentum', default=0.9, type=float, help='momentum in SGD')
@@ -230,13 +245,14 @@ if __name__ == "__main__":
     parser.add_argument('--pooling-exponent', default=1.0, type=float, help='exponent in GeM pooling')
     parser.add_argument('--beta-init', default=1.2, type=float, help='initial value for beta in margin loss')
     parser.add_argument('--beta-lr', default=1.0, type=float,
-                         help='learning rate for beta (relative to base learning rate)')
+                        help='learning rate for beta (relative to base learning rate)')
     parser.add_argument('--global-sampling', action='store_true',
-                         help='use a global weighted sampling instead of per-gpu (useful for small batches)')
+                        help='use a global weighted sampling instead of per-gpu (useful for small batches)')
     parser.add_argument('--classif-weight', default=1.0, type=utils.arguments.float_in_range(0, 1),
-                         help='weighting parameter for the loss, between 0 (only margin) and 1 (only cross-entropy)')
+                        help='weighting parameter for the loss, between 0 (only margin) and 1 (only cross-entropy)')
     parser.add_argument('--no-cuda', action='store_true', help='do not use CUDA')
-    parser.add_argument('--save-every', default=10, type=int, help='epoch backup interval (last epoch will always be saved)')
+    parser.add_argument('--save-every', default=10, type=int,
+                        help='epoch backup interval (last epoch will always be saved)')
     parser.add_argument('--imagenet-path', default='data/ilsvrc2012', help='ImageNet data root')
     parser.add_argument('--preload-dir-imagenet', default=None,
                         help='preload imagenet in this directory (useful for slow networks')
@@ -249,6 +265,5 @@ if __name__ == "__main__":
             raise ValueError('Margin loss in undefined for repeated_augmentations == 1; set --classif-weight=1.0')
         # No sampling is actually computed in this case, but the implementation requires the following:
         args.global_sampling = True
-
 
     run(args)
