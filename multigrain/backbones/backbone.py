@@ -14,6 +14,7 @@ from .pnasnet import pnasnet5large
 from .nasnet_mobile import nasnetamobile
 from collections import OrderedDict as OD
 from multigrain.modules.layers import Layer
+
 # torch.utils.checkpoint.preserve_rng_state=False
 
 
@@ -34,12 +35,16 @@ class BackBone(nn.Module):
     Base networks with output dict and standarized structure
     Returns embedding, classifier_output
     """
+
     def __init__(self, net, **kwargs):
         super().__init__()
         if isinstance(net, str):
+            # 创建基准网络
             if net not in backbone_list:
                 raise ValueError('Available backbones:', ', '.join(backbone_list))
             net = multigrain.backbones.backbone.__dict__[net](**kwargs)
+
+        # 解析网络各个子模块，划分为特征提取层、池化层、分类器层
         children = list(net.named_children())
         self.pre_classifier = None
         if type(net).__name__ == 'ResNet':
@@ -63,18 +68,25 @@ class BackBone(nn.Module):
     def forward(self, input):
         output = {}
         if isinstance(input, list):
+            # 如果input是列表格式，那么表明输入数据大小可能不一致
+            # 可能存在不同的输入大小，逐个提取特征
             # for lists of tensors of unequal input size
             features = map(self.features, [i.unsqueeze(0) for i in input])
+            # 逐个特征进行池化操作，最后连接在一起
             embedding = torch.cat([self.pool(f) for f in features], 0)
         else:
+            # 针对相同大小的输入数据，进行批运算
             features = self.features(input)
             embedding = self.pool(features)
         if self.whitening is not None:
+            # 如果白化操作不为空，那么执行白化操作
             embedding = self.whitening(embedding)
 
+        # 计算分类输出
         classifier_input = embedding
         if self.pre_classifier is not None:
             classifier_input = self.pre_classifier(classifier_input)
         classifier_output = self.classifier(classifier_input)
-        return embedding, classifier_output
 
+        # 返回特征嵌入向量和分类输出结果
+        return embedding, classifier_output
