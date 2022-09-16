@@ -8,6 +8,7 @@ from shutil import copyfile
 import os.path as osp
 from PIL import Image
 from PIL import ImageFile
+
 ImageFile.LOAD_TRUNCATED_IMAGES = True
 from multigrain.utils import ifmakedirs
 
@@ -16,6 +17,7 @@ def loader(path):
     return Image.open(path).convert('RGB')
 
 
+# 包装器，适用于输入参数path是相对路径的情况
 def preloader(dataset_root, preload_dir):
     def this_loader(path):
         dest_path = osp.join(preload_dir, osp.relpath(path, dataset_root))
@@ -26,4 +28,5 @@ def preloader(dataset_root, preload_dir):
 
         image = loader(dest_path)
         return image
+
     return this_loader

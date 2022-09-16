@@ -8,6 +8,7 @@ import os
 
 
 def ifmakedirs(path):
+    # 创建文件夹
     if not os.path.exists(path):
         os.makedirs(path)
 
