@@ -30,20 +30,29 @@ class RASampler(torch.utils.data.Sampler):
 
     def shuffler(self):
         if self.shuffle:
+            # 生成随机下标
             new_perm = lambda: iter(np.random.permutation(self.dataset_len))
         else:
+            # 生成顺序下标
             new_perm = lambda: iter(np.arange(self.dataset_len))
+        # 创建可迭代对象
         shuffle = new_perm()
+        # 创建迭代器
         while True:
             try:
                 index = next(shuffle)
             except StopIteration:
                 shuffle = new_perm()
                 index = next(shuffle)
+            # 重复次数
             for repetition in range(self.repetitions):
                 yield index
 
     def __iter__(self):
+        """
+        迭代器
+        :return:
+        """
         shuffle = iter(self.shuffler())
         seen = 0
         batch = []
@@ -51,12 +60,15 @@ class RASampler(torch.utils.data.Sampler):
             index = next(shuffle)
             batch.append(index)
             if len(batch) == self.batch_size:
+                # 批量加载
                 yield batch
                 batch = []
         if batch and not self.drop_last:
             yield batch
 
     def __len__(self):
+        # 批量采样长度
+        # 如果不舍弃drop_last，那么
         if self.drop_last:
             return self.len_images // self.batch_size
         else:
@@ -65,6 +77,7 @@ class RASampler(torch.utils.data.Sampler):
 
 def list_collate(batch):
     """
+    存在输入大小变化的情况，所以返回列表而不是张量
     Collate into a list instead of a tensor to deal with variable-sized inputs
     """
     elem_type = type(batch[0])

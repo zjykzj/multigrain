@@ -10,6 +10,8 @@ import numpy as np
 
 
 def get_whiten(X):
+    # X: [N, D]
+    # 创建PCA对象，打开白化开关，设置转换后维度为D
     pca = PCA(whiten=True, n_components=X.size(1))
     pca.fit(X.detach().cpu().numpy())
     m = torch.tensor(pca.mean_, dtype=torch.float)

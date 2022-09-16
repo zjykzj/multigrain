@@ -12,9 +12,7 @@ from multigrain.modules.layers import Layer, Select
 from multigrain.modules import DistanceWeightedSampling
 from collections import OrderedDict as OD
 
-
 __all__ = ['multigrain']
-
 
 model_urls = {
     ('multigrain_resnet50'): '',
@@ -22,10 +20,13 @@ model_urls = {
 
 
 class MultiGrain(BackBone):
+
     """
+    创建Multigrain架构
     Implement MultiGrain by changing the pooling layer of the backbone into GeM pooling with exponent p,
     and adding DistanceWeightedSampling for the margin loss.
     """
+
     def __init__(self, backbone, p=3.0, include_sampling=True, learn_p=False, **kwargs):
         super().__init__(backbone, **kwargs)
         if not torch.is_tensor(p):
