@@ -8,6 +8,12 @@ from time import time
 
 
 def Tictoc():
+    """
+    装饰器：时间计算
+    tic用于计算起始时间，toc用于输出当前时段时间
+    :return:
+    """
+
     start_stack = []
     start_named = {}
 
@@ -24,4 +30,5 @@ def Tictoc():
             start = start_named.pop(name)
         elapsed = time() - start
         return elapsed
+
     return tic, toc

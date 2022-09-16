@@ -22,13 +22,21 @@ class CheckpointHandler(object):
 
     def __init__(self, expdir, save_every=0, verbose=True, prefix='checkpoint_',
                  metrics_file='metrics'):
+        # 保存路径
         self.expdir = expdir
+        # 每隔N轮保存
         self.save_every = save_every
+        # 是否打印日志
         self.verbose = verbose
+        # 保存权重文件前缀
         self.prefix = prefix
+        # 运行日志文件名
         self.metrics = metrics_file
 
     def available(self, dir=None):
+        """
+        获取当前保存目录下有效的权重文件列表
+        """
         if dir is None:
             dir = self.expdir
         avail = OD()
@@ -38,6 +46,9 @@ class CheckpointHandler(object):
         return avail
 
     def exists(self, resume, dir=None):
+        """
+        判断resume是否存在于当前保存目录下
+        """
         if dir is None:
             dir = self.expdir
         if resume in (-1, 0):
@@ -46,6 +57,7 @@ class CheckpointHandler(object):
         return (resume in avail)
 
     def delete_old_checkpoints(self, epoch):
+        # 获取有效权重列表
         avail = self.available()
         for k in avail:
             if k != epoch and (self.save_every == 0 or (k % self.save_every) != 0):
@@ -74,6 +86,7 @@ class CheckpointHandler(object):
 
     def resume(self, model, optimizer=None, metrics_history={}, resume_epoch=-1, resume_from=None, return_extra=True):
         """
+        加载预训练权重以及优化器
         Restore model state dict and metrics.
         """
         if not resume_from:
@@ -115,7 +128,7 @@ class CheckpointHandler(object):
                 if self.verbose:
                     print('Optimizer state loaded from', resume_from)
             elif self.verbose:
-                    print('No optimizer state found in', resume_from)
+                print('No optimizer state found in', resume_from)
 
         if return_extra:
             extra = checkpoint.get('extra', {})

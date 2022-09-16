@@ -8,6 +8,10 @@ import argparse
 
 
 def comma_separated(type, separator=','):
+    """
+    装饰器：字符串解析，基于逗号进行分割
+    """
+
     def parser(inp):
         out = tuple(type(i) for i in inp.split(separator))
         if out == ('',):
@@ -17,6 +21,9 @@ def comma_separated(type, separator=','):
 
 
 def float_in_range(begin, end):
+    """
+    装饰器：判断输入数值是否符合要求
+    """
     def parser(inp):
         inp = float(inp)
         if not begin <= inp <= end:
@@ -26,6 +33,9 @@ def float_in_range(begin, end):
 
 
 def compare_dicts(dict1, dict2, verbose=True):
+    """
+    比较前后两个字典中移除的键值、修改的键值以及新增的键值
+    """
     removed = []
     added = []
     changed = []
@@ -35,7 +45,7 @@ def compare_dicts(dict1, dict2, verbose=True):
         elif dict2[k] != dict1[k]:
             changed.append((k, dict1[k], dict2[k]))
     for k in dict2:
-        if k not in dict2:
+        if k not in dict1:
             added.append((k, dict2[k]))
     if verbose:
         if removed:

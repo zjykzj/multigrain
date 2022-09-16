@@ -5,11 +5,15 @@
 # LICENSE file in the root directory of this source tree.
 #
 import matplotlib as mpl
+
 mpl.use('Agg')
 import matplotlib.pyplot as plt
 from collections import defaultdict
 import os.path as osp
 
+"""
+绘制训练日志，结合的太深，没啥必要阅读
+"""
 
 def make_plots(metrics_history, destdir):
     keys = set()
@@ -34,7 +38,7 @@ def make_plots(metrics_history, destdir):
                 if kg in metrics:
                     if isinstance(metrics[kg], list):
                         for i, v in enumerate(metrics[kg]):
-                            epochs.append(epoch - 1 + (i + 1)/len(metrics[kg]))
+                            epochs.append(epoch - 1 + (i + 1) / len(metrics[kg]))
                             values.append(v)
                     else:
                         epochs.append(epoch)

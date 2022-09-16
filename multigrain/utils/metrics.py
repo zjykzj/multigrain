@@ -11,24 +11,40 @@ from torch.nn import functional as F
 # Classification metrics
 
 def accuracy(output, target, topk=(1,)):
-    """Computes the precision@k for the specified values of k"""
+    """
+    计算准确率
+    Computes the precision@k for the specified values of k
+    """
     maxk = max(topk)
+    # 批量大小
     batch_size = target.size(0)
 
+    # 基于dim=1计算前maxk个排序下标
+    # output: [N, D]
+    # pred: [N, maxk]
     _, pred = output.topk(maxk, 1, True, True)
+    # [N, maxk] -> [maxk, N]
     pred = pred.t()
+    # [N] -> [1, N] -> [maxk, N]
     correct = pred.eq(target.view(1, -1).expand_as(pred))
 
     res = []
     for k in topk:
         # correct_k = correct[:k].view(-1).float().sum(0).item()
+        # [maxk, N] -> [k, N] -> [k*N] -> [1]
+        # 对于分类任务而言，仅有一个item会是True, 其他都是False
+        # 所以对于批量运算，累加全部结果即可
         correct_k = correct[:k].reshape(-1).float().sum(0).item()
         res.append(correct_k * (100.0 / batch_size))
     return res
 
 
 class AverageMeter(object):
-    """Computes and stores the average and current value"""
+    """
+    计算当前结果以及平均结果
+    Computes and stores the average and current value
+    """
+
     def __init__(self):
         self.reset()
 
@@ -39,14 +55,19 @@ class AverageMeter(object):
         self.count = 0
 
     def update(self, val, n=1):
+        # 当前结果
         self.val = val
+        # 累加结果
         self.sum += val * n
+        # 批量数字
         self.count += n
+        # 平均结果
         self.avg = self.sum / self.count
 
 
 class HistoryMeter(object):
     """Remember all values"""
+
     def __init__(self):
         self.reset()
 
@@ -83,11 +104,14 @@ class HistoryMeter(object):
 
 
 # Retrieval metrics
+# 没有写清楚检索任务的有效评估
 
 def score_ap(ranks, nres):
     """
+    计算单次搜索的平均精度
     Compute the average precision of one search.
     ranks = ordered list of ranks of true positives
+    # 数据集正样本总数
     nres  = total number of positives in dataset
     """
 
