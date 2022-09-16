@@ -16,8 +16,9 @@ class Resize(transforms.Resize):
     """
     Resize with a ``largest=False'' argument
     allowing to resize to a common largest side without cropping
-    """
 
+    图像缩放，较大边长缩放到指定size大小
+    """
 
     def __init__(self, size, largest=False, **kwargs):
         super().__init__(size, **kwargs)
@@ -26,8 +27,10 @@ class Resize(transforms.Resize):
     @staticmethod
     def target_size(w, h, size, largest=False):
         if (h < w) == largest:
+            # 如果宽大于高，那么宽设置为size，高按照等比例缩放
             w, h = size, int(size * h / w)
         else:
+            # 如果宽小于高，那么高设置为size，宽按照等比例缩放
             w, h = int(size * w / h), size
         size = (h, w)
         return size
@@ -46,7 +49,11 @@ class Resize(transforms.Resize):
 class Lighting(object):
     """
     PCA jitter transform on tensors
+
+    See https://zhuanlan.zhihu.com/p/69439309
+    PCA抖动：首先按照RGB三个颜色通道计算均值和标准差，再在整个训练集上计算协方差矩阵，进行特征分解，得到特征向量和特征值，用来做PCA Jittering
     """
+
     def __init__(self, alpha_std, eig_val, eig_vec):
         self.alpha_std = alpha_std
         self.eig_val = torch.as_tensor(eig_val, dtype=torch.float).view(1, 3)
@@ -63,6 +70,10 @@ class Lighting(object):
 
 
 class Bound(object):
+    """
+    设置数值最大、最小值，截断精度
+    """
+
     def __init__(self, lower=0., upper=1.):
         self.lower = lower
         self.upper = upper
@@ -75,8 +86,8 @@ def get_transforms(Dataset=IN1K, input_size=224, kind='full', crop=True, need=('
     """
     @param Dataset: 数据集类型
     @param input_size: 输入大小
-    @param kind: 预处理列表类型
-    @param crop: 是否进行中央裁剪
+    @param kind: 预处理列表类型 论文设置了多种预处理列表，默认为full
+    @param crop: 是否在验证集预处理阶段进行中央裁剪
     @param need: 针对不同阶段(训练或者验证阶段)进行的数据处理
     @param backbone: 针对指定的主干网络使用不同的均值/方差
     """
@@ -135,5 +146,6 @@ def get_transforms(Dataset=IN1K, input_size=224, kind='full', crop=True, need=('
                  transforms.ToTensor(),
                  transforms.Normalize(mean, std)])
     return transformations
+
 
 transforms_list = ['torch', 'full', 'senet', 'AA']
