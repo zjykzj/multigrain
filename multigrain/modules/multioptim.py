@@ -9,6 +9,7 @@ from collections import OrderedDict as OD
 
 class MultiOptim(OD):
     """
+    多优化器
     Holds dict of optimizers
     """
     def __init__(self, *args, **kwargs):

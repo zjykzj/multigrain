@@ -14,6 +14,7 @@ class DistanceWeightedSampling(nn.Module):
     See "sampling matters in deep embedding learning" paper for details.
     Implementation similar to https://github.com/chaoyuaw/sampling_matters
     """
+
     def __init__(self, cutoff=0.5, nonzero_loss_cutoff=1.4):
         super().__init__()
         self.cutoff = cutoff
@@ -101,6 +102,7 @@ class MarginLoss(nn.Module):
     margin : float
         Margin between positive and negative pairs.
     """
+
     def __init__(self, beta_init=1.2, margin=0.2):
         super().__init__()
         self.beta = nn.Parameter(torch.tensor(beta_init))
@@ -134,6 +136,7 @@ class SampledMarginLoss(nn.Module):
     """
     Combines DistanceWeightedSampling + Margin Loss
     """
+
     def __init__(self, sampling_args={}, margin_args={}):
         super().__init__()
         self.sampling = DistanceWeightedSampling(**sampling_args)
@@ -143,4 +146,3 @@ class SampledMarginLoss(nn.Module):
         sampled_dict = self.sampling(embedding, target)
         loss = self.margin(**sampled_dict)
         return loss
-

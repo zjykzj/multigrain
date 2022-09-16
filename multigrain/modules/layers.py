@@ -12,6 +12,8 @@ from . import functional as LF
 
 class Select(nn.Module):
     """
+    针对某一段通道执行module操作，可选舍弃其他通道内容
+
     Apply module on subset of the input channels.
     Optionally drops other channels
     """
@@ -36,6 +38,8 @@ class Select(nn.Module):
 
 class Layer(nn.Module):
     """
+    创建Module，指定functional以及输入参数（可训练或者超参数）
+
     General module wrapper for a functional layer.
     """
     def __init__(self, name, **kwargs):

@@ -10,6 +10,10 @@ from collections import OrderedDict as OD
 
 class MultiCriterion(nn.Module):
     """
+    多损失加权
+
+    每个损失函数对应一个加权因子，以及可能会有多个输入（通过input_key判定）
+
     Holds a dict of multiple losses with a weighting factor for each loss.
     - losses_dict: should be a dict with name as key and (loss, input_keys, weight) as values.
     - skip_zero: skip the computation of losses with 0 weight
@@ -36,8 +40,11 @@ class MultiCriterion(nn.Module):
                     raise ValueError('Element {} not found in input.'.format(k))
             if self.weights[name] == 0.0 and self.skip_zeros:
                 continue
+            # 计算损失
             this_loss = module(*[input_dict[k] for k in self.input_keys[name]])
             return_dict[name] = this_loss
+            # 加权
             loss = loss + self.weights[name] * this_loss
+        # 最后总的损失
         return_dict['loss'] = loss
         return return_dict
