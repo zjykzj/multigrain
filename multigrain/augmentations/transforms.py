@@ -90,6 +90,8 @@ def get_transforms(Dataset=IN1K, input_size=224, kind='full', crop=True, need=('
     @param crop: 是否在验证集预处理阶段进行中央裁剪
     @param need: 针对不同阶段(训练或者验证阶段)进行的数据处理
     @param backbone: 针对指定的主干网络使用不同的均值/方差
+
+    从实现上看，不管是训练还是测试阶段，预处理器都进行了固定大小缩放操作，保证同一批图片都是相同大小的
     """
     mean, std = Dataset.MEAN, Dataset.STD
     if backbone is not None and backbone in ['pnasnet5large', 'nasnetamobile']:

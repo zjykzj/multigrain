@@ -18,6 +18,21 @@ model_urls = {
     ('multigrain_resnet50'): '',
 }
 
+"""
+将完整的分类网络拆分为u几个模块：
+
+1. 主干Backbone
+2. 池化层
+3. 分类器
+
+替换掉池化层，使用GeM池化
+
+返回两部分内容：
+
+1. 特征向量
+2. 分类输出
+"""
+
 
 class MultiGrain(BackBone):
 
@@ -36,6 +51,8 @@ class MultiGrain(BackBone):
         self.pool = Layer('gem', p=p)
         self.normalize = Layer('l2n')
         if include_sampling:
+            # 对于分类任务而言，不需要执行距离加权采样
+            # 对于检索任务而言，需要从分类网络计算得到的特征向量和分类输出的基础上进一步进行采样，获取正负样本对特征向量
             self.weighted_sampling = DistanceWeightedSampling()
         self.whitening = None
 

@@ -24,6 +24,23 @@ import os.path as osp
 from collections import defaultdict
 from collections import OrderedDict as OD
 
+"""
+训练基本操作：
+
+1. 创建数据类、创建模型类、创建损失函数、创建优化器
+2. 批量加载、批量计算、批量训练
+3. 保存训练结果、保存运行日志
+
+数据加载器 -> 采样器 -> 数据类 -> 预处理器
+
+批量操作是如何进行的???
+
+在训练阶段，
+
+1. 固定超参数p。默认为p=3.0
+2. 存在代码冗余的现象
+"""
+
 # 计时
 tic, toc = utils.Tictoc()
 
@@ -47,12 +64,20 @@ def run(args):
         utils.ifmakedirs(args.expdir)
         logging.print_file(argstr, argfile)
 
+    # 创建预处理器，分别作用于训练阶段和测试阶段
     transforms = get_transforms(IN1K, args.input_size, args.augmentation, args.backbone)
     datas = {}
     for split in ('train', 'val'):
+        # 默认不操作
         imload = preloader(args.imagenet_path,
                            args.preload_dir_imagenet) if args.preload_dir_imagenet else default_loader
+        # 训练ImageNet
+        # 先使用IN1K创建数据类
+        # 然后使用IdDataset进行包装，返回字典形式数据选项
         datas[split] = IdDataset(IN1K(args.imagenet_path, split, transform=transforms[split], loader=imload))
+    # 创建数据加载器
+    # 创建批量采样器，使用RASampler，设置图像重复采样次数，单轮数据集扩展倍数
+    # 注意：使用RA，每一轮并不一定会遍历所有的图像
     loaders = {}
     loaders['train'] = DataLoader(datas['train'],
                                   batch_sampler=RASampler(len(datas['train']), args.batch_size,
@@ -62,11 +87,13 @@ def run(args):
     loaders['val'] = DataLoader(datas['val'], batch_size=args.batch_size, shuffle=args.shuffle_val,
                                 num_workers=args.workers, pin_memory=True)
 
+    # 创建MultiGrain架构模型，指定Backbone，GeM池化因子大小
     model = get_multigrain(args.backbone, p=args.pooling_exponent, include_sampling=not args.global_sampling,
                            pretrained_backbone=args.pretrained_backbone)
     print("Multigrain model with {} backbone and p={} pooling:".format(args.backbone, args.pooling_exponent))
     print(model)
 
+    # 创建交叉熵损失，作用于分类任务
     cross_entropy = torch.nn.CrossEntropyLoss()
     cross_entropy_criterion = (cross_entropy,
                                ('classifier_output', 'classifier_target'),
@@ -78,6 +105,7 @@ def run(args):
                             ('normalized_embedding', 'instance_target'),
                             1.0 - args.classif_weight)
     else:
+        # 创建MarginLoss，作用于检索任务
         margin = MarginLoss(args.beta_init)
         beta = margin.beta
         margin_criterion = (margin,
@@ -86,6 +114,7 @@ def run(args):
 
     extra = {'beta': beta}
 
+    # 创建组合损失函数
     criterion = MultiCriterion(dict(cross_entropy=cross_entropy_criterion, margin=margin_criterion),
                                skip_zeros=(args.repeated_augmentations == 1))
 
@@ -93,13 +122,18 @@ def run(args):
         criterion = utils.cuda(criterion)
         model = utils.cuda(model)
 
+    # 创建优化器
+    # 两个优化：分别是针对模型的优化以及针对MarginLoss的优化
     optimizers = OD()
+    # 对于主干网络，使用SGD+Momentum进行优化
     optimizers['backbone'] = SGD(model.parameters(), lr=args.learning_rate, momentum=args.momentum,
                                  weight_decay=args.weight_decay)
+    # 对于MarginLoss的超参数beta，使用SGD+Momentum进行优化
     optimizers['margin_beta'] = SGD([beta], lr=args.learning_rate * args.beta_lr, momentum=args.momentum)
     optimizers = MultiOptim(optimizers)
     optimizers.set_base_lr()
 
+    # 使用DP进行分布式训练，当前推荐DPP方式
     if args.cuda:
         model = nn.DataParallel(model)
 
@@ -174,13 +208,15 @@ def run(args):
         metrics = defaultdict(utils.AverageMeter)
         tic()
         for i, batch in enumerate(loader):
+            # 批量加载数据
             if args.cuda:
                 batch = utils.cuda(batch)
-            data_time = 1000 * toc();
+            data_time = 1000 * toc()
             tic()
+            # 进行单次计算
             step_metrics = step(batch)
             step_metrics['data_time'] = data_time
-            step_metrics['batch_time'] = 1000 * toc();
+            step_metrics['batch_time'] = 1000 * toc()
             tic()
             for (k, v) in step_metrics.items():
                 metrics[prefix + k].update(v, len(batch['input']))
@@ -199,6 +235,7 @@ def run(args):
 
         batches_accumulated = 0
         model.train()
+        # 输入训练数据加载器，单次训练函数，当前已训练轮数，文件前缀
         metrics = loop(loaders['train'], training_step, epoch, 'train_')
 
         model.eval()
@@ -261,9 +298,14 @@ if __name__ == "__main__":
 
     args = parser.parse_args()
     if args.repeated_augmentations == 1:
+        # 也就是不进行重复采样
         if args.classif_weight != 1.0:
+            # 当不进行重复采样的时候，仅进行分类任务训练
             raise ValueError('Margin loss in undefined for repeated_augmentations == 1; set --classif-weight=1.0')
         # No sampling is actually computed in this case, but the implementation requires the following:
+        # 仅执行分类训练，那么设置global_sampling为True，在MultiGrain模型计算过程中不执行检索特征采样
+        # 但是通过查看代码，发现在后续的损失函数计算中进行了检索特征采样。东西一模一样？？？为虾米
+        # 通过设置权重系数来保证仅执行分类任务训练，
         args.global_sampling = True
 
     run(args)
