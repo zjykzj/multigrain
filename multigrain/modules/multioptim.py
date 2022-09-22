@@ -51,6 +51,7 @@ class MultiOptim(OD):
 
     def set_base_lr(self):
         """
+        保存不同优化器的基准u学习率
         Remember base learning rates to easily apply learning rate drops.
         """
         self.base_lr = {}

@@ -137,7 +137,9 @@ def run(args):
     if args.cuda:
         model = nn.DataParallel(model)
 
+    # 基于轮数调整学习率
     def set_learning_rate(epoch):
+        # 采用的应该是StepLR，每隔多少轮衰减一次
         factor = 1.0
         for (drop, gamma) in zip(args.lr_drops_epochs, args.lr_drops_factors):
             if epoch > drop:
