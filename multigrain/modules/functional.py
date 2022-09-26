@@ -63,13 +63,18 @@ def gem(x, p=3, eps=1e-6, clamp=True, add_bias=False, keepdims=False):
 
 
 def apply_pca(vt, pca_P=None, pca_m=None):
+    """
+    白化操作近似于旋转矩阵+Shift(偏移)操作
+    """
     do_rotation = torch.is_tensor(pca_P) and pca_P.numel() > 0
     do_shift = torch.is_tensor(pca_P) and pca_P.numel() > 0
 
     if do_rotation or do_shift:
         if do_shift:
+            # 偏移操作
             vt = vt - pca_m
         if do_rotation:
+            # 矩阵乘法，执行旋转操作
             vt = torch.matmul(vt, pca_P)
     return vt
 

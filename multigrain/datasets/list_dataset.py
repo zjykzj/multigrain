@@ -11,6 +11,8 @@ from .loader import loader as default_loader
 
 class ListDataset(data.Dataset):
     """
+    无标签数据集加载
+
     Unlabelled images dataset from list of images and root
     """
 
@@ -18,6 +20,7 @@ class ListDataset(data.Dataset):
         self.root = root
         self.transform = transform
         self.imgs = imagelist
+
         if isinstance(imagelist, str):
             self.imgs = []
             if not osp.isfile(imagelist):
@@ -25,7 +28,8 @@ class ListDataset(data.Dataset):
             with open(imagelist) as f:
                 for im in f:
                     im = im.strip()
-                    if not im: continue
+                    if not im:
+                        continue
                     self.imgs.append(im)
         self.loader = loader
 

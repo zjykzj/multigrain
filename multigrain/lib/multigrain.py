@@ -35,7 +35,6 @@ model_urls = {
 
 
 class MultiGrain(BackBone):
-
     """
     创建Multigrain架构
     Implement MultiGrain by changing the pooling layer of the backbone into GeM pooling with exponent p,
@@ -71,8 +70,7 @@ class MultiGrain(BackBone):
         Initialize whitening operation (see scripts/whiten.py)
         """
         self.whitening = nn.Sequential(OD(normalize=Layer('l2n'),
-                                          pca=Layer('apply_pca', pca_P=torch.tensor([]),
-                                                    pca_m=torch.tensor([]))))
+                                          pca=Layer('apply_pca', pca_P=torch.tensor([]), pca_m=torch.tensor([]))))
         # integrate bias in classifier to make it invariant to the input normalization
         self.pool.kwargs['add_bias'] = True
         if self.pre_classifier is not None:
@@ -94,6 +92,8 @@ class MultiGrain(BackBone):
         else:
             self.whitening.pca.pca_m = torch.clone(m)
             self.whitening.pca.pca_P = torch.clone(P)
+        # 白化操作仅作用于检索任务，所以对于全连接层而言，需要通过反向矩阵消除影响
+        # 当然这个工程的操作比较高阶哈，我的话就直接拷贝两份主干特征，一份用于检索特征的白化操作，另一份用于分类特征的分类输出
         W = self.classifier.weight
         self.classifier.bias = nn.Parameter(m.to(W.device).matmul(W.data.t()))
         W.data = torch.matmul(W.data.double(), Pinv.to(W.device)).float()
