@@ -26,6 +26,34 @@ from collections import OrderedDict as OD
 # 计时
 tic, toc = utils.Tictoc()
 
+"""
+微调训练池化算子GeM的超参数p
+
+关于数据：
+
+1. 从ImageNet训练集中采集部分数据（每类采样50张 - args.images_per_class）
+2. 仍旧使用ImageNet验证集进行评估
+
+关于模型：
+
+1. 设置超参数p可学习
+2. 设置eval状态
+
+关于损失函数：
+
+1. 交叉熵损失
+
+关于优化器：
+
+1. SGD+Momentum
+2. 仅更新GeM超参数p
+
+因为是微调操作，所以设置低学习率进行操作
+
+另外，微调训练的目的是为了搭配图像输入和超参数p的使用，所以不同的输入大小需要微调不一样的p
+
+"""
+
 
 def run(args):
     # 序列化输入参数
